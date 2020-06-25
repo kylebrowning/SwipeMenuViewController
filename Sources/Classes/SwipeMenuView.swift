@@ -219,7 +219,8 @@ open class SwipeMenuView: UIView {
         view.backgroundColor = .gray
         return view
     }()
-
+    let rightGradientView = UILabel()
+    let leftGradientView = UILabel()
 
     public var options: SwipeMenuViewOptions
 
@@ -229,24 +230,12 @@ open class SwipeMenuView: UIView {
         return dataSource?.numberOfPages(in: self) ?? 0
     }
 
-    fileprivate var isJumping: Bool = false {
-        didSet {
-            print("is jumping: \(isJumping)")
-        }
-    }
+    fileprivate var isJumping: Bool = false
     fileprivate var isPortrait: Bool = true
 
     /// The index of the front page in `SwipeMenuView` (read only).
-    open private(set) var currentIndex: Int = 0 {
-        didSet {
-            print("set current index to: \(currentIndex)")
-        }
-    }
-    private var jumpingToIndex: Int? {
-        didSet {
-            print("set jumping index to: \(jumpingToIndex)")
-        }
-    }
+    open private(set) var currentIndex: Int = 0
+    private var jumpingToIndex: Int?
 
     public init(frame: CGRect, options: SwipeMenuViewOptions? = nil) {
 
@@ -318,7 +307,7 @@ open class SwipeMenuView: UIView {
         let direction: UIPageViewController.NavigationDirection = page > currentIndex ? .forward : .reverse
         DispatchQueue.main.async { [unowned self] in
             self.pageViewController.setViewControllers([vc], direction: direction, animated: false) { finished in
-//                self.isJumping = false
+                //                self.isJumping = false
             }
         }
     }
@@ -368,6 +357,43 @@ open class SwipeMenuView: UIView {
         currentIndex = defaultIndex
 
         delegate?.swipeMenuView(self, viewDidSetupAt: defaultIndex)
+        setupGradientViews()
+    }
+
+    func setupGradientView(_ view: UILabel) {
+        view.backgroundColor = .clear
+        let width = UIScreen.main.bounds.width
+
+        let layer = CAGradientLayer()
+        layer.colors = [
+            UIColor(red: 0, green: 0, blue: 0, alpha: 0.8).cgColor,
+            UIColor(red: 0, green: 0, blue: 0, alpha: 0).cgColor
+        ]
+        layer.locations = [0, 1]
+        layer.startPoint = CGPoint(x: 0.25, y: 0.5)
+        layer.endPoint = CGPoint(x: 0.75, y: 0.5)
+        switch view {
+            case leftGradientView:
+                view.frame = CGRect(x: 0, y: 0, width: 45, height: 44)
+            case rightGradientView:
+                view.frame = CGRect(x: width - 45, y: 0, width: 45, height: 44)
+                layer.transform = CATransform3DMakeScale(-1, 1, 1)
+            default:
+                preconditionFailure("Attemping to setup a gradient whos frame will not be set.")
+        }
+
+        layer.bounds = view.bounds
+        layer.position = view.center
+        view.layer.addSublayer(layer)
+        addSubview(view)
+        view.translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    func setupGradientViews() {
+        setupGradientView(rightGradientView)
+        setupGradientView(leftGradientView)
+        rightGradientView.isHidden = false
+        leftGradientView.isHidden = true
     }
 
     private func layout(tabView: TabView) {
@@ -419,6 +445,23 @@ open class SwipeMenuView: UIView {
 // MARK: - TabViewDelegate, TabViewDataSource
 
 extension SwipeMenuView: TabViewDelegate, TabViewDataSource {
+    public func tabViewDidScroll(_ tabView: TabView) {
+        let contentOffset = tabView.contentOffset
+        let contentSize = tabView.contentSize
+        let width = UIScreen.main.bounds.width
+        if contentOffset.x > 1.0 && (contentSize.width - contentOffset.x) > width + 20 {
+            rightGradientView.isHidden = false
+            leftGradientView.isHidden = false
+        } else if contentOffset.x <= 0.0 {
+            rightGradientView.isHidden = false
+            leftGradientView.isHidden = true
+        } else {
+            rightGradientView.isHidden = true
+            leftGradientView.isHidden = false
+        }
+        print("\(contentOffset) \((contentSize.width - contentOffset.x)) >= \(width)")
+    }
+
 
     public func tabView(_ tabView: TabView, didSelectTabAt index: Int) {
 

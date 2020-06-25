@@ -3,10 +3,10 @@ import SwipeMenuViewController
 
 final class ViewController: SwipeMenuViewController {
 
-    private var datas: [String] = ["Bulbasaur","Caterpie", "Golem", "Jynx", "Marshtomp", "Salamence", "Riolu", "Araquanid"]
+    private var datas: [String] = ["Bulbasaur","Caterpie", "Golem", "Jynx", "Marshtomp", "Salamence", "Riolu", "Araquanid", "Pickachu"]
 
     var options = SwipeMenuViewOptions()
-    var dataCount: Int = 7
+    var dataCount: Int = 8
     var vcs: [ContentViewController] = []
     @IBOutlet private weak var settingButton: UIButton!
 

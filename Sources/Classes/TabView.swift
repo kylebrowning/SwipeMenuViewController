@@ -9,6 +9,9 @@ public protocol TabViewDelegate: class {
 
     /// Called after selecting the tab.
     func tabView(_ tabView: TabView, didSelectTabAt index: Int)
+
+    /// Called when TabView is scrolling
+    func tabViewDidScroll(_ tabView: TabView)
 }
 
 extension TabViewDelegate {
@@ -52,6 +55,7 @@ open class TabView: UIScrollView {
         if let options = options {
             self.options = options
         }
+        delegate = self
     }
 
     public required init?(coder aDecoder: NSCoder) {
@@ -546,3 +550,8 @@ extension TabView {
     }
 }
 
+extension TabView: UIScrollViewDelegate {
+    public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        tabViewDelegate?.tabViewDidScroll(self)
+    }
+}
