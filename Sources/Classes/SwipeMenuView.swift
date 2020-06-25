@@ -361,6 +361,9 @@ open class SwipeMenuView: UIView {
         setupGradientViews()
         addSubview(ruleView)
         sendSubviewToBack(ruleView)
+        sendSubviewToBack(rightGradientView)
+        sendSubviewToBack(leftGradientView)
+        sendSubviewToBack(tabView!)
     }
 
     func setupGradientView(_ view: UILabel) {
