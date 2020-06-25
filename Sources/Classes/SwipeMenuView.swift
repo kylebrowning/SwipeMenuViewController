@@ -181,6 +181,9 @@ public protocol SwipeMenuViewDataSource: class {
 
     /// Return a ViewController to be displayed at the page in `SwipeMenuView`.
     func swipeMenuView(_ swipeMenuView: SwipeMenuView, viewControllerForPageAt index: Int) -> UIViewController
+
+    /// Called to get index of vc.
+    func swipeMenuViewGetIndex(vc: UIViewController) -> Int?
 }
 
 // MARK: - SwipeMenuView
@@ -203,15 +206,20 @@ open class SwipeMenuView: UIView {
         }
     }
 
-    open fileprivate(set) var contentScrollView: ContentScrollView? {
-        didSet {
-            guard let contentScrollView = contentScrollView else { return }
-            contentScrollView.delegate = self
-            contentScrollView.dataSource = self
-            addSubview(contentScrollView)
-            layout(contentScrollView: contentScrollView)
-        }
-    }
+    lazy var pageViewController: UIPageViewController = {
+        let vc = UIPageViewController(transitionStyle: UIPageViewController.TransitionStyle.scroll, navigationOrientation: UIPageViewController.NavigationOrientation.horizontal, options: [.interPageSpacing: 0])
+        vc.view.translatesAutoresizingMaskIntoConstraints = false
+        vc.dataSource = self
+        vc.delegate = self
+        return vc
+    }()
+
+    lazy var ruleView: UIView = {
+        let view = UIView(frame: .init(x: 0, y: options.tabView.height, width: UIScreen.main.bounds.size.width, height: 1))
+        view.backgroundColor = .gray
+        return view
+    }()
+
 
     public var options: SwipeMenuViewOptions
 
@@ -221,12 +229,24 @@ open class SwipeMenuView: UIView {
         return dataSource?.numberOfPages(in: self) ?? 0
     }
 
-    fileprivate var isJumping: Bool = false
+    fileprivate var isJumping: Bool = false {
+        didSet {
+            print("is jumping: \(isJumping)")
+        }
+    }
     fileprivate var isPortrait: Bool = true
 
     /// The index of the front page in `SwipeMenuView` (read only).
-    open private(set) var currentIndex: Int = 0
-    private var jumpingToIndex: Int?
+    open private(set) var currentIndex: Int = 0 {
+        didSet {
+            print("set current index to: \(currentIndex)")
+        }
+    }
+    private var jumpingToIndex: Int? {
+        didSet {
+            print("set jumping index to: \(jumpingToIndex)")
+        }
+    }
 
     public init(frame: CGRect, options: SwipeMenuViewOptions? = nil) {
 
@@ -282,14 +302,25 @@ open class SwipeMenuView: UIView {
 
     /// Jump to the selected page.
     public func jump(to index: Int, animated: Bool) {
-        guard let tabView = tabView, let contentScrollView = contentScrollView else { return }
+        guard let tabView = tabView else { return }
         if currentIndex != index {
             delegate?.swipeMenuView(self, willChangeIndexFrom: currentIndex, to: index)
         }
         jumpingToIndex = index
 
         tabView.jump(to: index)
-        contentScrollView.jump(to: index, animated: animated)
+    }
+
+    public func move(to page: Int) {
+        guard let vc = dataSource?.swipeMenuView(self, viewControllerForPageAt: page) else {
+            return
+        }
+        let direction: UIPageViewController.NavigationDirection = page > currentIndex ? .forward : .reverse
+        DispatchQueue.main.async { [unowned self] in
+            self.pageViewController.setViewControllers([vc], direction: direction, animated: false) { finished in
+//                self.isJumping = false
+            }
+        }
     }
 
     /// Notify changing orientaion to `SwipeMenuView` before it.
@@ -305,12 +336,11 @@ open class SwipeMenuView: UIView {
         }
 
         tabView?.update(toIndex)
-        contentScrollView?.update(toIndex)
-        if !isJumping {
-            // delay setting currentIndex until end scroll when jumping
-            currentIndex = toIndex
-        }
+        currentIndex = toIndex
 
+        move(to: toIndex)
+
+        isJumping = false
         if !isJumping && !isLayoutingSubviews {
             delegate?.swipeMenuView(self, didChangeIndexFrom: fromIndex, to: toIndex)
         }
@@ -326,11 +356,15 @@ open class SwipeMenuView: UIView {
         tabView = TabView(frame: CGRect(x: 0, y: 0, width: frame.width, height: options.tabView.height), options: options.tabView)
         tabView?.clipsToBounds = options.tabView.clipsToBounds
 
-        contentScrollView = ContentScrollView(frame: CGRect(x: 0, y: options.tabView.height, width: frame.width, height: frame.height - options.tabView.height), default: defaultIndex, options: options.contentScrollView)
-        contentScrollView?.clipsToBounds = options.contentScrollView.clipsToBounds
+        translatesAutoresizingMaskIntoConstraints = false
+        pageViewController.scrollView?.delegate = self
 
+        pageViewController.view.frame = CGRect(x: 0, y: options.tabView.height, width: frame.width, height: frame.height - options.tabView.height)
+        viewController?.addChild(pageViewController)
+        addSubview(pageViewController.view)
+        pageViewController.didMove(toParent: viewController)
         tabView?.update(defaultIndex)
-        contentScrollView?.update(defaultIndex)
+        move(to: defaultIndex)
         currentIndex = defaultIndex
 
         delegate?.swipeMenuView(self, viewDidSetupAt: defaultIndex)
@@ -345,7 +379,7 @@ open class SwipeMenuView: UIView {
             tabView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
             tabView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
             tabView.heightAnchor.constraint(equalToConstant: options.tabView.height)
-            ])
+        ])
     }
 
     private func layout(contentScrollView: ContentScrollView) {
@@ -357,7 +391,16 @@ open class SwipeMenuView: UIView {
             contentScrollView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
             contentScrollView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
             contentScrollView.bottomAnchor.constraint(equalTo: self.bottomAnchor)
-            ])
+        ])
+    }
+
+    private func layout(pageViewController: UIPageViewController) {
+        NSLayoutConstraint.activate([
+            pageViewController.view.topAnchor.constraint(equalTo: self.topAnchor, constant: options.tabView.height),
+            pageViewController.view.leadingAnchor.constraint(equalTo: self.leadingAnchor),
+            pageViewController.view.trailingAnchor.constraint(equalTo: self.trailingAnchor),
+            pageViewController.view.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: 44)
+        ])
     }
 
     private func reset() {
@@ -366,11 +409,9 @@ open class SwipeMenuView: UIView {
             currentIndex = 0
         }
 
-        if let tabView = tabView, let contentScrollView = contentScrollView {
+        if let tabView = tabView {
             tabView.removeFromSuperview()
-            contentScrollView.removeFromSuperview()
             tabView.reset()
-            contentScrollView.reset()
         }
     }
 }
@@ -381,13 +422,12 @@ extension SwipeMenuView: TabViewDelegate, TabViewDataSource {
 
     public func tabView(_ tabView: TabView, didSelectTabAt index: Int) {
 
-        guard let contentScrollView = contentScrollView,
-            currentIndex != index else { return }
+        guard currentIndex != index else {
+            return
+        }
 
         isJumping = true
         jumpingToIndex = index
-
-        contentScrollView.jump(to: index, animated: true)
 
         update(from: currentIndex, to: index)
     }
@@ -406,32 +446,15 @@ extension SwipeMenuView: TabViewDelegate, TabViewDataSource {
 extension SwipeMenuView: UIScrollViewDelegate {
 
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
-
-        if isJumping || isLayoutingSubviews { return }
-
-        // update currentIndex
-        if scrollView.contentOffset.x >= frame.width * CGFloat(currentIndex + 1) {
-            update(from: currentIndex, to: currentIndex + 1)
-        } else if scrollView.contentOffset.x <= frame.width * CGFloat(currentIndex - 1) {
-            update(from: currentIndex, to: currentIndex - 1)
+        if isJumping || isLayoutingSubviews {
+            print("skipped")
+            return
         }
 
         updateTabViewAddition(by: scrollView)
     }
 
     public func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
-
-        if isJumping || isLayoutingSubviews {
-            if let toIndex = jumpingToIndex {
-                delegate?.swipeMenuView(self, didChangeIndexFrom: currentIndex, to: toIndex)
-                currentIndex = toIndex
-                jumpingToIndex = nil
-            }
-            isJumping = false
-            isLayoutingSubviews = false
-            return
-        }
-
         updateTabViewAddition(by: scrollView)
     }
 
@@ -442,32 +465,83 @@ extension SwipeMenuView: UIScrollViewDelegate {
 
     /// update underbar position
     private func moveAdditionView(scrollView: UIScrollView) {
-
-        if let tabView = tabView, let contentScrollView = contentScrollView {
-
-            let ratio = scrollView.contentOffset.x.truncatingRemainder(dividingBy: contentScrollView.frame.width) / contentScrollView.frame.width
-
-            switch scrollView.contentOffset.x {
-            case let offset where offset >= frame.width * CGFloat(currentIndex):
-                tabView.moveAdditionView(index: currentIndex, ratio: ratio, direction: .forward)
-            case let offset where offset < frame.width * CGFloat(currentIndex):
-                tabView.moveAdditionView(index: currentIndex, ratio: ratio, direction: .reverse)
-            default:
-                break
+        if let tabView = tabView {
+            let point = scrollView.contentOffset
+            let view = pageViewController.view!
+            let ratioForward: CGFloat = abs(point.x - view.frame.size.width) / view.frame.size.width
+            let ratioBack: CGFloat = 1 - ratioForward
+            guard let jumpingToIndex = jumpingToIndex else {
+                return
+            }
+            if jumpingToIndex > currentIndex {
+                tabView.moveAdditionView(index: currentIndex, ratio: ratioForward, direction: .forward)
+            } else {
+                tabView.moveAdditionView(index: currentIndex, ratio: ratioBack, direction: .reverse)
             }
         }
     }
 }
 
-// MARK: - ContentScrollViewDataSource
 
-extension SwipeMenuView: ContentScrollViewDataSource {
+extension SwipeMenuView: UIPageViewControllerDataSource {
 
-    public func numberOfPages(in contentScrollView: ContentScrollView) -> Int {
-        return dataSource?.numberOfPages(in: self) ?? 0
+    public func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
+        if currentIndex <= 0 {
+            return nil
+        }
+        return dataSource?.swipeMenuView(self, viewControllerForPageAt: currentIndex - 1)
     }
 
-    public func contentScrollView(_ contentScrollView: ContentScrollView, viewForPageAt index: Int) -> UIView? {
-        return dataSource?.swipeMenuView(self, viewControllerForPageAt: index).view
+    public func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
+        if currentIndex + 1 >= pageCount {
+            return nil
+        }
+        let vc = dataSource?.swipeMenuView(self, viewControllerForPageAt: currentIndex + 1)
+        return vc
+    }
+}
+
+extension SwipeMenuView: UIPageViewControllerDelegate {
+
+    public func pageViewController(_ pageViewController: UIPageViewController, willTransitionTo pendingViewControllers: [UIViewController]) {
+
+        guard let datasource = dataSource,
+              let toVC = pendingViewControllers.first,
+              let index = datasource.swipeMenuViewGetIndex(vc: toVC)
+        else { return }
+        jumpingToIndex = index
+    }
+
+    public func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
+        guard completed else {
+            return
+        }
+        if let toIndex = jumpingToIndex {
+            delegate?.swipeMenuView(self, didChangeIndexFrom: currentIndex, to: toIndex)
+            currentIndex = toIndex
+            jumpingToIndex = nil
+            isJumping = false
+        }
+    }
+}
+
+
+extension UIPageViewController {
+
+    var scrollView: UIScrollView? {
+        return self.view.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView
+    }
+}
+
+extension UIView {
+    var viewController: UIViewController? {
+        var responder: UIResponder? = self
+        while responder != nil {
+            if let responder = responder as? UIViewController {
+                return responder
+            }
+            responder = responder?.next
+        }
+        return nil
     }
 }

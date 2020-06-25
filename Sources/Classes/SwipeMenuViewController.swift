@@ -64,7 +64,11 @@ open class SwipeMenuViewController: UIViewController, SwipeMenuViewDelegate, Swi
 
     open func swipeMenuView(_ swipeMenuView: SwipeMenuView, viewControllerForPageAt index: Int) -> UIViewController {
         let vc = children[index]
-        vc.didMove(toParent: self)
+//        vc.didMove(toParent: self)
         return vc
+    }
+
+    open func swipeMenuViewGetIndex(vc: UIViewController) -> Int? {
+        children.firstIndex(of: vc)
     }
 }
