@@ -215,8 +215,8 @@ open class SwipeMenuView: UIView {
     }()
 
     lazy var ruleView: UIView = {
-        let view = UIView(frame: .init(x: 0, y: options.tabView.height, width: UIScreen.main.bounds.size.width, height: 1))
-        view.backgroundColor = .gray
+        let view = UIView(frame: .init(x: 0, y: options.tabView.height - 2, width: UIScreen.main.bounds.size.width, height: 2))
+        view.backgroundColor = UIColor(red: 0.196, green: 0.196, blue: 0.196, alpha: 1)
         return view
     }()
     let rightGradientView = UILabel()
@@ -351,6 +351,7 @@ open class SwipeMenuView: UIView {
         pageViewController.view.frame = CGRect(x: 0, y: options.tabView.height, width: frame.width, height: frame.height - options.tabView.height)
         viewController?.addChild(pageViewController)
         addSubview(pageViewController.view)
+        layout(pageViewController: pageViewController)
         pageViewController.didMove(toParent: viewController)
         tabView?.update(defaultIndex)
         move(to: defaultIndex)
@@ -358,6 +359,8 @@ open class SwipeMenuView: UIView {
 
         delegate?.swipeMenuView(self, viewDidSetupAt: defaultIndex)
         setupGradientViews()
+        addSubview(ruleView)
+        sendSubviewToBack(ruleView)
     }
 
     func setupGradientView(_ view: UILabel) {
