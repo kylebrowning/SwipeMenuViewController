@@ -18,7 +18,18 @@ final class ViewController: SwipeMenuViewController {
             vc.content = datas[n]
             vcs.append(vc)
         }
+        options.tabView.addition = .underline
+        options.tabView.itemView.selectedTextColor = UIColor(red: 1, green: 1, blue: 1, alpha: 1)
+        options.tabView.itemView.textColor = UIColor(red: 170 / 255, green: 170 / 255, blue: 170 / 255, alpha: 1.0)
+//        swipeMenuView.options.tabView.needsConvertTextColorRatio = true
+        options.tabView.additionView.backgroundColor = .white
+        options.tabView.margin = -6
+        options.tabView.itemView.margin = 16
+        options.tabView.backgroundColor = .black
 //        view.bringSubviewToFront(settingButton)
+        DispatchQueue.main.asyncAfter(deadline: .init(uptimeNanoseconds: 1000)) {
+            self.reload()
+        }
         super.viewDidLoad()
     }
 

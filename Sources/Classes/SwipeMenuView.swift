@@ -377,7 +377,7 @@ open class SwipeMenuView: UIView {
         layer.endPoint = CGPoint(x: 0.75, y: 0.5)
         switch view {
             case leftGradientView:
-                view.frame = CGRect(x: 0, y: 0, width: 45, height: 44)
+                view.frame = CGRect(x: 0, y: 0, width: 45, height: 42)
             case rightGradientView:
                 view.frame = CGRect(x: width - 45, y: 0, width: 45, height: 42)
                 layer.transform = CATransform3DMakeScale(-1, 1, 1)
