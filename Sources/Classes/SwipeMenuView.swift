@@ -360,6 +360,7 @@ open class SwipeMenuView: UIView {
         delegate?.swipeMenuView(self, viewDidSetupAt: defaultIndex)
         setupGradientViews()
         addSubview(ruleView)
+        sendSubviewToBack(ruleView)
     }
 
     func setupGradientView(_ view: UILabel) {
@@ -452,21 +453,16 @@ extension SwipeMenuView: TabViewDelegate, TabViewDataSource {
         let contentSize = tabView.contentSize
         let width = UIScreen.main.bounds.width
         if contentOffset.x > 0.1 && (contentSize.width - contentOffset.x) > width + 20 {
-            print("show both")
             rightGradientView.setIsHidden(false)
             leftGradientView.setIsHidden(false)
         } else if contentOffset.x <= 0.0 {
-            print("show left")
             rightGradientView.setIsHidden(false)
             leftGradientView.setIsHidden(true)
         } else {
-            print("show left")
             rightGradientView.setIsHidden(true)
             leftGradientView.setIsHidden(false)
         }
-        print("\(contentOffset) \((contentSize.width - contentOffset.x)) >= \(width)")
     }
-
 
     public func tabView(_ tabView: TabView, didSelectTabAt index: Int) {
 
