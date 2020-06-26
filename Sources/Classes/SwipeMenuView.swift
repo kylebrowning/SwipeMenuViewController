@@ -360,10 +360,6 @@ open class SwipeMenuView: UIView {
         delegate?.swipeMenuView(self, viewDidSetupAt: defaultIndex)
         setupGradientViews()
         addSubview(ruleView)
-        sendSubviewToBack(ruleView)
-        sendSubviewToBack(rightGradientView)
-        sendSubviewToBack(leftGradientView)
-        sendSubviewToBack(tabView!)
     }
 
     func setupGradientView(_ view: UILabel) {
@@ -382,7 +378,7 @@ open class SwipeMenuView: UIView {
             case leftGradientView:
                 view.frame = CGRect(x: 0, y: 0, width: 45, height: 44)
             case rightGradientView:
-                view.frame = CGRect(x: width - 45, y: 0, width: 45, height: 44)
+                view.frame = CGRect(x: width - 45, y: 0, width: 45, height: 42)
                 layer.transform = CATransform3DMakeScale(-1, 1, 1)
             default:
                 preconditionFailure("Attemping to setup a gradient whos frame will not be set.")
@@ -398,8 +394,8 @@ open class SwipeMenuView: UIView {
     func setupGradientViews() {
         setupGradientView(rightGradientView)
         setupGradientView(leftGradientView)
-        rightGradientView.isHidden = false
-        leftGradientView.isHidden = true
+        rightGradientView.setIsHidden(false, animated: false)
+        leftGradientView.setIsHidden(true, animated: false)
     }
 
     private func layout(tabView: TabView) {
@@ -455,15 +451,18 @@ extension SwipeMenuView: TabViewDelegate, TabViewDataSource {
         let contentOffset = tabView.contentOffset
         let contentSize = tabView.contentSize
         let width = UIScreen.main.bounds.width
-        if contentOffset.x > 1.0 && (contentSize.width - contentOffset.x) > width + 20 {
-            rightGradientView.isHidden = false
-            leftGradientView.isHidden = false
+        if contentOffset.x > 0.1 && (contentSize.width - contentOffset.x) > width + 20 {
+            print("show both")
+            rightGradientView.setIsHidden(false)
+            leftGradientView.setIsHidden(false)
         } else if contentOffset.x <= 0.0 {
-            rightGradientView.isHidden = false
-            leftGradientView.isHidden = true
+            print("show left")
+            rightGradientView.setIsHidden(false)
+            leftGradientView.setIsHidden(true)
         } else {
-            rightGradientView.isHidden = true
-            leftGradientView.isHidden = false
+            print("show left")
+            rightGradientView.setIsHidden(true)
+            leftGradientView.setIsHidden(false)
         }
         print("\(contentOffset) \((contentSize.width - contentOffset.x)) >= \(width)")
     }
@@ -593,4 +592,19 @@ extension UIView {
         }
         return nil
     }
+    func setIsHidden(_ hidden: Bool, animated: Bool = true, customCompletion: @escaping (() -> Void) = {}) {
+        if animated {
+            let animations = {
+                self.alpha = hidden ? 0.0 : 1.0
+            }
+            let completion: ((Bool) -> Void) = { completed in
+                customCompletion()
+            }
+            UIView.animate(withDuration: 0.3, animations: animations, completion: completion)
+        } else {
+            self.alpha = hidden ? 0.0 : 1.0
+            customCompletion()
+        }
+    }
+
 }
